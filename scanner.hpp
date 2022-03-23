@@ -1,6 +1,5 @@
 
+#include "token.hpp"
+#include <fstream>
 
-enum class ScannerState {
-  awaitNewChar,
-
-}
+std::vector<Token> do_scan(std::ifstream fstream);
