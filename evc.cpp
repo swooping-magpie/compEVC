@@ -2,20 +2,19 @@
 #include <cstdio>
 #include <fstream>
 #include <iostream>
+#include <sstream>
 #include <stdio.h>
+
+#include "scanner.hpp"
 
 int main(int argc, char **argv) {
   std::printf("======= The VC compiler =======\n");
 
-  std::ifstream src_file;
-
-  src_file.open("../test.vc");
+  std::ifstream src_file("../test.vc");
   assert(src_file.is_open());
 
-  // character iterator over a stream
+  std::stringstream filebuf;
+  filebuf << src_file.rdbuf();
 
-  for (auto i = 0; i < 10; ++i) {
-    char c = src_file.get();
-    std::printf("new char is: %c\n", c);
-  }
+  auto f = filebuf.str();
 }

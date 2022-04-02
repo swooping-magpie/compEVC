@@ -52,6 +52,10 @@ enum class TokenKind {
   // special tokens...
   ERROR = 38,
   EVC_EOF = 39,
+
+  // EXTENDED VC tokens...
+  AMPERSAND = 40,
+  PLACEHOLDER = 41,
 };
 
 struct SourcePosition {
@@ -59,15 +63,12 @@ struct SourcePosition {
   int line_num;
 };
 
-struct SourceRange {
-  SourcePosition start;
-  SourcePosition end;
-};
-
 struct Token {
   TokenKind kind;
-  std::string spelling; // the lexeme
-  SourceRange span;
+  uint32_t start_offset;
+  uint32_t end_offset;
+  SourcePosition start_pos;
+  SourcePosition end_pos;
   std::string spell(TokenKind tk);
-  std::string to_string(Token t);
+  std::string to_string(Token t, char const *buf, uint32_t length);
 };
