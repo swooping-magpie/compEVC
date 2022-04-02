@@ -35,28 +35,22 @@ enum class ScannerMode {
   foundAmp,
   foundStick,
   foundPeriod,
+  foundSlashR,
 };
 
-struct MaybeToken {
-  Token tk;
-  bool is_token;
+void move_up_tab(SourcePosition *pos) {
+  do {
+    ++pos->col_pos;
+  } while (pos->line_num % 8 != 1);
+  return;
+};
+void move_up_newline(SourcePosition *pos) {
+  pos->col_pos = 1;
+  ++pos->line_num;
+  return;
 };
 
-static inline bool isLetter(char c) {
-  return (('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z'));
-}
-
-static inline bool isNumber(char c) { return ('0' <= c && c <= '9'); }
-
-static inline bool isLetterOrUndersocre(char c) {
-  return isLetter(c) || (c == '_');
-}
-
-static inline bool isNumberOrLetterOrUnderscore(char c) {
-  return isLetter(c) || isNumber(c) || (c == '_');
-}
-
-void advance_state(ScannerState &sState, char c, std::vector<Token> &v);
+void move_up_space(SourcePosition *pos) { ++pos->col_pos; }
 
 std::vector<Token> do_entire_scan(char const *start, uint32_t length) {
   auto ret = std::vector<Token>{};
@@ -75,18 +69,183 @@ std::vector<Token> do_entire_scan(char const *start, uint32_t length) {
       .end_pos = curr_pos,
   };
 
-  char c = start[offset];
   while (offset < length) {
-    assert(c == start[offset]);
+    char c = start[offset];
+
     switch (mode) {
     case ScannerMode::freshStart:
-      switch (c) {}
+      switch (c) {
+      case '\t':
+      case ' ':
+      case '\n':
+        break;
+      case '\r':
+        mode = ScannerMode::foundSlashR;
+        break;
+      case '(':
+        restart_token(&curr_token_fragment, TokenKind::LPAREN, offset,
+                      curr_pos);
+        curr_token_fragment.end_offset = offset + 1;
+        curr_token_fragment.end_pos = curr_pos;
+        ret.push_back(curr_token_fragment);
+        break;
+      case ')':
+        restart_token(&curr_token_fragment, TokenKind::RPAREN, offset,
+                      curr_pos);
+        curr_token_fragment.end_offset = offset + 1;
+        curr_token_fragment.end_pos = curr_pos;
+        ret.push_back(curr_token_fragment);
+        break;
+      case '{':
+        restart_token(&curr_token_fragment, TokenKind::LCURLY, offset,
+                      curr_pos);
+        curr_token_fragment.end_offset = offset + 1;
+        curr_token_fragment.end_pos = curr_pos;
+        ret.push_back(curr_token_fragment);
+        break;
+      case '}':
+        restart_token(&curr_token_fragment, TokenKind::RCURLY, offset,
+                      curr_pos);
+        curr_token_fragment.end_offset = offset + 1;
+        curr_token_fragment.end_pos = curr_pos;
+        ret.push_back(curr_token_fragment);
+        break;
+      case '[':
+        restart_token(&curr_token_fragment, TokenKind::LBRACKET, offset,
+                      curr_pos);
+        curr_token_fragment.end_offset = offset + 1;
+        curr_token_fragment.end_pos = curr_pos;
+        ret.push_back(curr_token_fragment);
+        break;
+      case ']':
+        restart_token(&curr_token_fragment, TokenKind::RBRACKET, offset,
+                      curr_pos);
+        curr_token_fragment.end_offset = offset + 1;
+        curr_token_fragment.end_pos = curr_pos;
+        ret.push_back(curr_token_fragment);
+        break;
+      case ';':
+        restart_token(&curr_token_fragment, TokenKind::SEMICOLON, offset,
+                      curr_pos);
+        curr_token_fragment.end_offset = offset + 1;
+        curr_token_fragment.end_pos = curr_pos;
+        ret.push_back(curr_token_fragment);
+        break;
+      case ',':
+        restart_token(&curr_token_fragment, TokenKind::COMMA, offset, curr_pos);
+        curr_token_fragment.end_offset = offset + 1;
+        curr_token_fragment.end_pos = curr_pos;
+        ret.push_back(curr_token_fragment);
+        break;
+      case '+':
+        restart_token(&curr_token_fragment, TokenKind::PLUS, offset, curr_pos);
+        curr_token_fragment.end_offset = offset + 1;
+        curr_token_fragment.end_pos = curr_pos;
+        ret.push_back(curr_token_fragment);
+        break;
+      case '-':
+        restart_token(&curr_token_fragment, TokenKind::MINUS, offset, curr_pos);
+        curr_token_fragment.end_offset = offset + 1;
+        curr_token_fragment.end_pos = curr_pos;
+        ret.push_back(curr_token_fragment);
+        break;
+      case '*':
+        restart_token(&curr_token_fragment, TokenKind::MULT, offset, curr_pos);
+        curr_token_fragment.end_offset = offset + 1;
+        curr_token_fragment.end_pos = curr_pos;
+        ret.push_back(curr_token_fragment);
+        break;
+      case '/':
+        restart_token(&curr_token_fragment, TokenKind::DIV, offset, curr_pos);
+        curr_token_fragment.end_offset = offset + 1;
+        curr_token_fragment.end_pos = curr_pos;
+        ret.push_back(curr_token_fragment);
+        break;
+      case '!':
+        restart_token(&curr_token_fragment, TokenKind::NOT, offset, curr_pos);
+        curr_token_fragment.end_offset = offset + 1;
+        curr_token_fragment.end_pos = curr_pos;
+
+        mode = ScannerMode::foundExclamation;
+        break;
+      case '=':
+        restart_token(&curr_token_fragment, TokenKind::NOT, offset, curr_pos);
+        curr_token_fragment.end_offset = offset + 1;
+        curr_token_fragment.end_pos = curr_pos;
+
+        mode = ScannerMode::foundEquals;
+        break;
+      }
+      break;
+    case ScannerMode::foundSlashR:
+      switch (c) {
+      case '\n':
+        ++offset;
+
+        mode = ScannerMode::freshStart;
+        continue;
+      default:
+        mode = ScannerMode::freshStart;
+        continue;
+      }
+      break;
+    case ScannerMode::foundExclamation:
+      switch (c) {
+      case '=':
+        curr_token_fragment.kind = TokenKind::NOTEQ;
+        curr_token_fragment.end_offset = offset + 1;
+        curr_token_fragment.end_pos = curr_pos;
+        ret.push_back(curr_token_fragment);
+
+        mode = ScannerMode::freshStart;
+        break;
+      default:
+        // push back what is currently there
+        ret.push_back(curr_token_fragment);
+        mode = ScannerMode::freshStart;
+        continue;
+      }
+      break;
+    case ScannerMode::foundEquals:
+      switch (c) {
+      case '=':
+        curr_token_fragment.kind = TokenKind::EQEQ;
+        curr_token_fragment.end_offset = offset + 1;
+        curr_token_fragment.end_pos = curr_pos;
+        ret.push_back(curr_token_fragment);
+
+        mode = ScannerMode::freshStart;
+        break;
+      default:
+        // push back what is currently there
+        ret.push_back(curr_token_fragment);
+        mode = ScannerMode::freshStart;
+        continue;
+      }
+      break;
     default:
       assert(!"Unreachable");
     };
+
+    ++offset;
+
+    switch (c) {
+    case '\t':
+      move_up_tab(&curr_pos);
+      break;
+    case '\n':
+      move_up_newline(&curr_pos);
+      break;
+    case '\r':
+      move_up_newline(&curr_pos);
+      break;
+    default:
+      move_up_space(&curr_pos);
+      break;
+    }
   }
-}
-return ret;
+
+  return ret;
 }
 
 void handle_simple_case(ScannerState &sState, TokenKind tKind,
@@ -94,23 +253,6 @@ void handle_simple_case(ScannerState &sState, TokenKind tKind,
   // increment the current position
   ++sState.curr_pos.col_pos;
 };
-
-void update_pos(SourcePosition &pos, char c) {
-  switch (c) {
-  case '\n':
-    pos.col_pos = 1;
-    ++pos.line_num;
-    break;
-  case '\t':
-    do {
-      ++pos.col_pos;
-    } while (pos.line_num % 8 != 1);
-    break;
-  default:
-    ++pos.col_pos;
-    break;
-  }
-}
 
 void advance_fresh_state(ScannerState &sState, char c, std::vector<Token> &v);
 void advance_max_munch(ScannerState &sState, char c, std::vector<Token> &v);

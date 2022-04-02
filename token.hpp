@@ -72,3 +72,13 @@ struct Token {
   std::string spell(TokenKind tk);
   std::string to_string(Token t, char const *buf, uint32_t length);
 };
+
+inline void restart_token(Token *tk, TokenKind kind, uint32_t offset,
+                          SourcePosition curr_pos) {
+  tk->kind = TokenKind::PLACEHOLDER;
+  tk->start_offset = offset;
+  tk->end_offset = offset;
+  tk->start_pos = curr_pos;
+  tk->end_pos = curr_pos;
+  return;
+}
