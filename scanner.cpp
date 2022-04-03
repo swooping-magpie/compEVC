@@ -169,11 +169,43 @@ std::vector<Token> do_entire_scan(char const *start, uint32_t length) {
         mode = ScannerMode::foundExclamation;
         break;
       case '=':
-        restart_token(&curr_token_fragment, TokenKind::NOT, offset, curr_pos);
+        restart_token(&curr_token_fragment, TokenKind::EQ, offset, curr_pos);
         curr_token_fragment.end_offset = offset + 1;
         curr_token_fragment.end_pos = curr_pos;
 
         mode = ScannerMode::foundEquals;
+        break;
+
+      case '<':
+        restart_token(&curr_token_fragment, TokenKind::LT, offset, curr_pos);
+        curr_token_fragment.end_offset = offset + 1;
+        curr_token_fragment.end_pos = curr_pos;
+
+        mode = ScannerMode::foundLT;
+        break;
+
+      case '>':
+        restart_token(&curr_token_fragment, TokenKind::GT, offset, curr_pos);
+        curr_token_fragment.end_offset = offset + 1;
+        curr_token_fragment.end_pos = curr_pos;
+
+        mode = ScannerMode::foundGT;
+        break;
+
+      case '&':
+        restart_token(&curr_token_fragment, TokenKind::ERROR, offset, curr_pos);
+        curr_token_fragment.end_offset = offset + 1;
+        curr_token_fragment.end_pos = curr_pos;
+
+        mode = ScannerMode::foundAmp;
+        break;
+
+      case '|':
+        restart_token(&curr_token_fragment, TokenKind::ERROR, offset, curr_pos);
+        curr_token_fragment.end_offset = offset + 1;
+        curr_token_fragment.end_pos = curr_pos;
+
+        mode = ScannerMode::foundStick;
         break;
       }
       break;
@@ -223,6 +255,81 @@ std::vector<Token> do_entire_scan(char const *start, uint32_t length) {
         continue;
       }
       break;
+
+    case ScannerMode::foundLT:
+      switch (c) {
+      case '=':
+        curr_token_fragment.kind = TokenKind::LTEQ;
+        curr_token_fragment.end_offset = offset + 1;
+        curr_token_fragment.end_pos = curr_pos;
+        ret.push_back(curr_token_fragment);
+
+        mode = ScannerMode::freshStart;
+        break;
+      default:
+        // push back what is currently there
+        ret.push_back(curr_token_fragment);
+        mode = ScannerMode::freshStart;
+        continue;
+      }
+      break;
+
+    case ScannerMode::foundGT:
+      switch (c) {
+      case '=':
+        curr_token_fragment.kind = TokenKind::GTEQ;
+        curr_token_fragment.end_offset = offset + 1;
+        curr_token_fragment.end_pos = curr_pos;
+        ret.push_back(curr_token_fragment);
+
+        mode = ScannerMode::freshStart;
+        break;
+      default:
+        // push back what is currently there
+        ret.push_back(curr_token_fragment);
+        mode = ScannerMode::freshStart;
+        continue;
+      }
+      break;
+
+    case ScannerMode::foundAmp:
+      switch (c) {
+      case '&':
+        curr_token_fragment.kind = TokenKind::ANDAND;
+        curr_token_fragment.end_offset = offset + 1;
+        curr_token_fragment.end_pos = curr_pos;
+        ret.push_back(curr_token_fragment);
+
+        mode = ScannerMode::freshStart;
+        break;
+      default:
+        // push back what is currently there
+        // this is an error token!
+        ret.push_back(curr_token_fragment);
+        mode = ScannerMode::freshStart;
+        continue;
+      }
+      break;
+
+    case ScannerMode::foundStick:
+      switch (c) {
+      case '|':
+        curr_token_fragment.kind = TokenKind::OROR;
+        curr_token_fragment.end_offset = offset + 1;
+        curr_token_fragment.end_pos = curr_pos;
+        ret.push_back(curr_token_fragment);
+
+        mode = ScannerMode::freshStart;
+        break;
+      default:
+        // push back what is currently there
+        // this is an error token!
+        ret.push_back(curr_token_fragment);
+        mode = ScannerMode::freshStart;
+        continue;
+      }
+      break;
+
     default:
       assert(!"Unreachable");
     };
