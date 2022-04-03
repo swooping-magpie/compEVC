@@ -56,6 +56,9 @@ enum class TokenKind {
   // EXTENDED VC tokens...
   AMPERSAND = 40,
   PLACEHOLDER = 41,
+  ERROR_UNTERMINATED_COMMENT = 42,
+  ERROR_UNTERMINATED_STRING = 43,
+  ERROR_STRINGLIT_WITH_ILLEGAL_ESCAPE_CHAR = 44,
 };
 
 struct SourcePosition {
@@ -69,16 +72,19 @@ struct Token {
   uint32_t end_offset;
   SourcePosition start_pos;
   SourcePosition end_pos;
-  std::string spell(TokenKind tk);
-  std::string to_string(Token t, char const *buf, uint32_t length);
 };
+
+std::string spell(TokenKind tk);
+std::string to_string(Token t, char const *buf, uint32_t length);
 
 inline void restart_token(Token *tk, TokenKind kind, uint32_t offset,
                           SourcePosition curr_pos) {
-  tk->kind = TokenKind::PLACEHOLDER;
+  tk->kind = kind;
   tk->start_offset = offset;
   tk->end_offset = offset;
   tk->start_pos = curr_pos;
   tk->end_pos = curr_pos;
   return;
 }
+
+void print_token(Token const *tk);
