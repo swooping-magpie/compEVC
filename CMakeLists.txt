@@ -5,3 +5,4 @@ project(EVC)
 
 add_executable(main_runner evc.cpp token.cpp scanner.cpp)
 
+add_executable(tests test.cpp)

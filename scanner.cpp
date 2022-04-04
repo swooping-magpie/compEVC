@@ -326,6 +326,8 @@ std::vector<Token> do_scan(char const *start, uint32_t length) {
         mode = ScannerMode::foundFractionalPartAfterInt;
         break;
       default:
+        curr_token_fragment.end_offset = offset;
+        curr_token_fragment.end_pos = curr_pos;
         ret.push_back(curr_token_fragment);
 
         mode = ScannerMode::freshStart;
@@ -713,7 +715,20 @@ std::vector<Token> do_scan(char const *start, uint32_t length) {
     }
   }
 
-  ret.push_back(curr_token_fragment);
+  switch (mode) {
+  case ScannerMode::freshStart:
+    // nop: do nothing since the assumption is we have completed everything
+    break;
+  case ScannerMode::midSlashDotComment:
+    curr_token_fragment.kind = TokenKind::ERROR_UNTERMINATED_COMMENT;
+    curr_token_fragment.end_offset = offset;
+    curr_token_fragment.end_pos = curr_pos;
+    ret.push_back(curr_token_fragment);
+    break;
+  default:
+    ret.push_back(curr_token_fragment);
+    break;
+  }
 
   // final token
   restart_token(&curr_token_fragment, TokenKind::EVC_EOF, offset, curr_pos);

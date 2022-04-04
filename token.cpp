@@ -57,8 +57,8 @@ std::string spell(TokenKind tk) { return keywords[static_cast<int>(tk)]; }
 static std::string pos_to_string(SourcePosition const &lhs,
                                  SourcePosition const &rhs) {
   return std::to_string(lhs.line_num) + "(" + std::to_string(lhs.col_pos) +
-         ").." + std::to_string(lhs.line_num) + "(" +
-         std::to_string(lhs.col_pos) + ")";
+         ").." + std::to_string(rhs.line_num) + "(" +
+         std::to_string(rhs.col_pos) + ")";
 }
 
 std::string to_string(Token t, char const *buf, uint32_t length) {
