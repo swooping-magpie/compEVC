@@ -2,6 +2,7 @@
 
 #include "token.hpp"
 
+#include <cstdint>
 #include <vector>
 
 struct Decl;
@@ -21,7 +22,6 @@ struct WhileStmt;
 struct BreakStmt;
 struct ContStmt;
 struct RetStmt;
-struct ExprStmt;
 
 struct CmpdNode {
   enum class kind {
@@ -37,6 +37,28 @@ struct CmpdNode {
 
 struct CmpdStmt {
   std::vector<CmpdNode> nodes;
+};
+
+struct ForStmt {
+  Expr *e1;
+  Expr *e2;
+  Expr *e3;
+  Stmt *for_stmt;
+};
+
+struct IfStmt {
+  Expr *condition;
+  Stmt *if_stmt;
+  Stmt *else_stmt;
+};
+
+struct WhileStmt {
+  Expr *condition;
+  Stmt *while_stmt;
+};
+
+struct RetStmt {
+  Expr *ret_expr;
 };
 
 struct Stmt {
@@ -56,10 +78,9 @@ struct Stmt {
     IfStmt *if_node;
     ForStmt *for_node;
     WhileStmt *while_node;
-    BreakStmt *break_node;
-    ContStmt *continue_node;
     RetStmt *return_node;
-    ExprStmt *expr_node;
+    Expr *expr_node;
+    uint8_t nothing;
   };
 };
 

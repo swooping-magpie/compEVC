@@ -1,6 +1,7 @@
 #include "parser.hpp"
 #include "token.hpp"
 #include <cassert>
+#include <cstddef>
 #include <cstdint>
 
 #define CASE_POSTFIX TokenKind::LBRACKET : case TokenKind::LPAREN
@@ -185,8 +186,299 @@ Status pratt_loop_identifier(Token const *tks, uint32_t length,
 // offset,
 //                       TypeIdent *ti);
 
+Status parseCompoundStmt(Token const *tks, uint32_t length,
+                         uint32_t *const offset, CmpdStmt **cmpst);
+
+Status parseIfStmt(Token const *tks, uint32_t length, uint32_t *const offset,
+                   IfStmt **ifst);
+
+Status parseForStmt(Token const *tks, uint32_t length, uint32_t *const offset,
+                    ForStmt **forst);
+
+Status parseWhileStmt(Token const *tks, uint32_t length, uint32_t *const offset,
+                      WhileStmt **whilest);
+
+Status parseBreakStmt(Token const *tks, uint32_t length,
+                      uint32_t *const offset);
+
+Status parseContinueStmt(Token const *tks, uint32_t length,
+                         uint32_t *const offset);
+
+Status parseReturnStmt(Token const *tks, uint32_t length,
+                       uint32_t *const offset, RetStmt **retst);
+
 Status parseStmt(Token const *tks, uint32_t length, uint32_t *const offset,
-                 Stmt **stmt);
+                 Stmt **stmt) {
+  auto peek_token = tks[*offset];
+
+  Stmt *new_stmt_node = (Stmt *)malloc(sizeof(Stmt));
+
+  switch (peek_token.kind) {
+  case TokenKind::LCURLY: {
+    // parseCmpdStmt
+    new_stmt_node->tag = Stmt::kind::CmpdStmt;
+    Status err =
+        parseCompoundStmt(tks, length, offset, &new_stmt_node->compound_node);
+    if (err != Status::Success) {
+      return err;
+    }
+  }
+    return Status::Success;
+  case TokenKind::IF: {
+    // parseIfStmt
+    new_stmt_node->tag = Stmt::kind::IfStmt;
+    Status err = parseIfStmt(tks, length, offset, &new_stmt_node->if_node);
+    if (err != Status::Success) {
+      return err;
+    }
+  }
+    return Status::Success;
+    break;
+  case TokenKind::FOR: {
+    // parseIfStmt
+    new_stmt_node->tag = Stmt::kind::ForStmt;
+    Status err = parseForStmt(tks, length, offset, &new_stmt_node->for_node);
+    if (err != Status::Success) {
+      return err;
+    }
+  }
+    return Status::Success;
+  case TokenKind::WHILE: {
+    new_stmt_node->tag = Stmt::kind::WhileStmt;
+    Status err =
+        parseWhileStmt(tks, length, offset, &new_stmt_node->while_node);
+    if (err != Status::Success) {
+      return err;
+    }
+  }
+    return Status::Success;
+  case TokenKind::BREAK: {
+    new_stmt_node->tag = Stmt::kind::BreakStmt;
+    new_stmt_node->nothing = 0;
+    Status err = parseBreakStmt(tks, length, offset);
+    if (err != Status::Success) {
+      return err;
+    }
+  }
+    return Status::Success;
+  case TokenKind::CONTINUE: {
+    new_stmt_node->tag = Stmt::kind::ContStmt;
+    new_stmt_node->nothing = 0;
+    Status err = parseContinueStmt(tks, length, offset);
+    if (err != Status::Success) {
+      return err;
+    }
+  }
+    return Status::Success;
+  case TokenKind::RETURN: {
+    new_stmt_node->tag = Stmt::kind::RetStmt;
+    Status err =
+        parseReturnStmt(tks, length, offset, &new_stmt_node->return_node);
+    if (err != Status::Success) {
+      return err;
+    }
+  }
+    return Status::Success;
+  default: {
+    new_stmt_node->tag = Stmt::kind::ExprStmt;
+    Status err = parseExpr(tks, length, offset, &new_stmt_node->expr_node);
+    if (err != Status::Success) {
+      return err;
+    }
+  }
+    return Status::Success;
+  }
+}
+
+Status parseIfStmt(Token const *tks, uint32_t length, uint32_t *const offset,
+                   IfStmt **ifst) {
+
+  Status err = accept_token(tks, length, offset, TokenKind::IF);
+  if (err != Status::Success) {
+    return err;
+  }
+
+  err = accept_token(tks, length, offset, TokenKind::LPAREN);
+  if (err != Status::Success) {
+    return err;
+  }
+
+  IfStmt *new_node = (IfStmt *)malloc(sizeof(IfStmt));
+
+  err = parseExpr(tks, length, offset, &new_node->condition);
+  if (err != Status::Success) {
+    return err;
+  }
+
+  err = accept_token(tks, length, offset, TokenKind::RPAREN);
+  if (err != Status::Success) {
+    return err;
+  }
+
+  err = parseStmt(tks, length, offset, &new_node->if_stmt);
+  if (err != Status::Success) {
+    return err;
+  }
+
+  auto peek_token = tks[*offset];
+  if (peek_token.kind != TokenKind::ELSE) {
+    new_node->else_stmt = nullptr;
+
+    *ifst = new_node;
+
+    return Status::Success;
+  } else {
+    accept_token(tks, length, offset, TokenKind::ELSE);
+    err = parseStmt(tks, length, offset, &new_node->else_stmt);
+    if (err != Status::Success) {
+      return err;
+    }
+
+    *ifst = new_node;
+
+    return Status::Success;
+  }
+}
+
+Status parseForStmt(Token const *tks, uint32_t length, uint32_t *const offset,
+                    ForStmt **forst) {
+
+  Status err = accept_token(tks, length, offset, TokenKind::FOR);
+  if (err != Status::Success) {
+    return err;
+  }
+
+  err = accept_token(tks, length, offset, TokenKind::LPAREN);
+  if (err != Status::Success) {
+    return err;
+  }
+
+  ForStmt *new_node = (ForStmt *)malloc(sizeof(ForStmt));
+
+  auto peek_token = tks[*offset];
+  if (peek_token.kind == TokenKind::SEMICOLON) {
+    accept_token(tks, length, offset, TokenKind::SEMICOLON);
+  } else {
+    err = parseExpr(tks, length, offset, &new_node->e1);
+    if (err != Status::Success) {
+      return err;
+    }
+  }
+
+  peek_token = tks[*offset];
+  if (peek_token.kind == TokenKind::SEMICOLON) {
+    accept_token(tks, length, offset, TokenKind::SEMICOLON);
+  } else {
+    err = parseExpr(tks, length, offset, &new_node->e2);
+    if (err != Status::Success) {
+      return err;
+    }
+  }
+
+  peek_token = tks[*offset];
+  if (peek_token.kind == TokenKind::RPAREN) {
+    ;
+  } else {
+    err = parseExpr(tks, length, offset, &new_node->e3);
+    if (err != Status::Success) {
+      return err;
+    }
+  }
+
+  err = accept_token(tks, length, offset, TokenKind::RPAREN);
+  if (err != Status::Success) {
+    return err;
+  }
+
+  err = parseStmt(tks, length, offset, &new_node->for_stmt);
+  if (err != Status::Success) {
+    return err;
+  }
+
+  *forst = new_node;
+  return Status::Success;
+}
+
+Status parseWhileStmt(Token const *tks, uint32_t length, uint32_t *const offset,
+                      WhileStmt **whilest) {
+
+  Status err = accept_token(tks, length, offset, TokenKind::WHILE);
+  if (err != Status::Success) {
+    return err;
+  }
+
+  err = accept_token(tks, length, offset, TokenKind::LPAREN);
+  if (err != Status::Success) {
+    return err;
+  }
+
+  WhileStmt *new_node = (WhileStmt *)malloc(sizeof(WhileStmt));
+  err = parseExpr(tks, length, offset, &new_node->condition);
+  if (err != Status::Success) {
+    return err;
+  }
+
+  err = accept_token(tks, length, offset, TokenKind::RPAREN);
+  if (err != Status::Success) {
+    return err;
+  }
+
+  err = parseStmt(tks, length, offset, &new_node->while_stmt);
+  if (err != Status::Success) {
+    return err;
+  }
+
+  *whilest = new_node;
+  return Status::Success;
+};
+
+Status parseBreakStmt(Token const *tks, uint32_t length,
+                      uint32_t *const offset) {
+  Status err = accept_token(tks, length, offset, TokenKind::CONTINUE);
+  if (err != Status::Success) {
+    return err;
+  }
+  return accept_token(tks, length, offset, TokenKind::SEMICOLON);
+}
+
+Status parseContinueStmt(Token const *tks, uint32_t length,
+                         uint32_t *const offset) {
+  Status err = accept_token(tks, length, offset, TokenKind::CONTINUE);
+  if (err != Status::Success) {
+    return err;
+  }
+  return accept_token(tks, length, offset, TokenKind::SEMICOLON);
+}
+
+Status parseReturnStmt(Token const *tks, uint32_t length,
+                       uint32_t *const offset, RetStmt **retst) {
+  Status err = accept_token(tks, length, offset, TokenKind::RETURN);
+  if (err != Status::Success) {
+    return err;
+  }
+
+  auto peek_token = tks[*offset];
+
+  if (peek_token.kind == TokenKind::SEMICOLON) {
+    accept_token(tks, length, offset, TokenKind::SEMICOLON);
+
+    *retst = nullptr;
+    return Status::Success;
+  } else {
+    RetStmt *new_node = (RetStmt *)malloc(sizeof(RetStmt));
+    Status err = parseExpr(tks, length, offset, &new_node->ret_expr);
+    if (err != Status::Success) {
+      return err;
+    }
+    err = accept_token(tks, length, offset, TokenKind::SEMICOLON);
+    if (err != Status::Success) {
+      return err;
+    }
+
+    *retst = new_node;
+    return Status::Success;
+  }
+}
 
 Status parseCompoundStmt(Token const *tks, uint32_t length,
                          uint32_t *const offset, CmpdStmt **cmpst) {
@@ -195,8 +487,10 @@ Status parseCompoundStmt(Token const *tks, uint32_t length,
     return err;
   }
 
+  *cmpst = new CmpdStmt;
+
   for (auto peek_token = tks[*offset]; peek_token.kind != TokenKind::RCURLY;
-       peek_token = tks[*offset]) {
+       ++*offset, peek_token = tks[*offset]) {
     if (peek_token.kind == TokenKind::BOOLEAN ||
         peek_token.kind == TokenKind::INT ||
         peek_token.kind == TokenKind::FLOAT ||
