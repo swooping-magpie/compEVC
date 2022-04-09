@@ -798,3 +798,6 @@ Status parseExpr(Token const *tks, uint32_t length, uint32_t *const offset,
   }
   return Status::Success;
 };
+
+Status parse_paralist(Token const *tks, uint32_t length, uint32_t *const offset,
+                      std::vector<Para> *pl) {}
