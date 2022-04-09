@@ -12,6 +12,11 @@ constexpr size_t const_size_of(T const (&arr)[N]) {
   return N;
 }
 
+// template <size_t N> constexpr size_t const_char_size_of(char const (&str)[N])
+// {
+//   return N;
+// }
+
 #define CASE_DIGIT                                                             \
   '0' : case '1' : case '2' : case '3' : case '4' : case '5' : case '6'        \
       : case '7' : case '8' : case '9'
@@ -32,7 +37,7 @@ struct StringKeyword {
   TokenKind tk;
 };
 
-static const StringKeyword keywords[] = {
+static constexpr StringKeyword keywords[] = {
     {"boolean", TokenKind::BOOLEAN},
     {"break", TokenKind::BREAK},
     {"continue", TokenKind::CONTINUE},
@@ -44,11 +49,14 @@ static const StringKeyword keywords[] = {
     {"return", TokenKind::RETURN},
     {"void", TokenKind::VOID},
     {"while", TokenKind::WHILE},
+    {"true", TokenKind::BOOLEANLITERAL},
+    {"false", TokenKind::BOOLEANLITERAL},
 };
 
 static constexpr size_t size_of_keywords = const_size_of(keywords);
 
-static_assert(size_of_keywords == 11, "can't count rip\n");
+static_assert(size_of_keywords == 13, "can't count rip\n");
+// static_assert(keywords[0].str[7] == '\0', "last character is null right??");
 
 TokenKind process_identifier(char const *start, uint32_t length,
                              uint32_t start_offset, uint32_t end_offset) {
@@ -64,6 +72,11 @@ TokenKind process_identifier(char const *start, uint32_t length,
         break;
       }
     }
+
+    if (broken == 0 && (keywords[i].str[end_offset - start_offset] != '\0')) {
+      broken = 1;
+    }
+
     if (broken == 0) {
       return keywords[i].tk;
     } else {
@@ -103,7 +116,7 @@ enum class ScannerMode {
 void move_up_tab(SourcePosition *pos) {
   do {
     ++pos->col_pos;
-  } while (pos->line_num % 8 != 1);
+  } while (pos->col_pos % 8 != 1);
   return;
 };
 void move_up_newline(SourcePosition *pos) {
@@ -132,7 +145,10 @@ std::vector<Token> do_scan(char const *start, uint32_t length) {
   };
 
   while (offset < length) {
+
     char c = start[offset];
+    // std::printf("Offset is %u, mode is %d, last char is %d\n", offset, mode,
+    // c);
 
     switch (mode) {
     case ScannerMode::freshStart:
@@ -147,22 +163,31 @@ std::vector<Token> do_scan(char const *start, uint32_t length) {
       case '"':
         restart_token(&curr_token_fragment, TokenKind::STRINGLITERAL,
                       offset + 1, curr_pos);
+        curr_token_fragment.end_offset = offset + 1;
+        curr_token_fragment.end_pos = curr_pos;
+
         mode = ScannerMode::foundQuotationMark;
         break;
       case CASE_DIGIT:
         restart_token(&curr_token_fragment, TokenKind::INTLITERAL, offset,
                       curr_pos);
+        curr_token_fragment.end_offset = offset + 1;
+        curr_token_fragment.end_pos = curr_pos;
 
         mode = ScannerMode::foundDigit;
         break;
       case '_':
       case CASE_LETTER:
         restart_token(&curr_token_fragment, TokenKind::ID, offset, curr_pos);
+        curr_token_fragment.end_offset = offset + 1;
+        curr_token_fragment.end_pos = curr_pos;
 
         mode = ScannerMode::foundLetter;
         break;
       case '.':
         restart_token(&curr_token_fragment, TokenKind::ERROR, offset, curr_pos);
+        curr_token_fragment.end_offset = offset + 1;
+        curr_token_fragment.end_pos = curr_pos;
 
         mode = ScannerMode::foundDot;
         break;
@@ -352,6 +377,8 @@ std::vector<Token> do_scan(char const *start, uint32_t length) {
         ret.push_back(curr_token_fragment);
 
         restart_token(&curr_token_fragment, TokenKind::ID, offset, curr_pos);
+        curr_token_fragment.end_offset = offset + 1;
+        curr_token_fragment.end_pos = curr_pos;
         mode = ScannerMode::foundEAfterNumber;
         break;
       default:
@@ -372,6 +399,8 @@ std::vector<Token> do_scan(char const *start, uint32_t length) {
         ret.push_back(curr_token_fragment);
 
         restart_token(&curr_token_fragment, TokenKind::ID, offset, curr_pos);
+        curr_token_fragment.end_offset = offset + 1;
+        curr_token_fragment.end_pos = curr_pos;
         mode = ScannerMode::foundEAfterNumber;
         break;
       default:
@@ -386,6 +415,8 @@ std::vector<Token> do_scan(char const *start, uint32_t length) {
       case '-':
         ret.push_back(curr_token_fragment);
         restart_token(&curr_token_fragment, TokenKind::PLUS, offset, curr_pos);
+        curr_token_fragment.end_offset = offset + 1;
+        curr_token_fragment.end_pos = curr_pos;
 
         mode = ScannerMode::foundSignAfterEAfterNumber;
         break;
@@ -735,5 +766,7 @@ std::vector<Token> do_scan(char const *start, uint32_t length) {
   curr_token_fragment.end_offset = offset;
   curr_token_fragment.end_pos = curr_pos;
   ret.push_back(curr_token_fragment);
+
+  // std::printf("finito!\n");
   return ret;
 }

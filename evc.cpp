@@ -28,4 +28,6 @@ int main(int argc, char **argv) {
   for (auto const t : tokens) {
     std::printf("%s\n", to_string(t, f.data(), f.size()).c_str());
   }
+
+  tokens.data();
 }
