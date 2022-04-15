@@ -92,6 +92,7 @@ enum class PrimitiveType {
   Integer,
   Boolean,
   Float,
+  String,
   Void,
 };
 
@@ -103,12 +104,10 @@ struct TypeModifier {
   };
   TypeModKind tag;
   union {
-    struct {
-      std::vector<Para> para_list;
-    };
-    struct {
-      Expr *array_expr;
-    };
+
+    std::vector<Para> para_list;
+
+    Expr *array_expr;
   };
 };
 
